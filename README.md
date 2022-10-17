@@ -8,4 +8,4 @@ Today’s scientific simulations are confronting grave limited I/O bandwidth, ne
 ZFP is one of the most successful compressors for scientific applications in high-performance computing systems and this work continues to be optimized. We propose a new embedded coding and apply it to ZFP, called ZFP-X. 
 
 ## Install
-Replace the encode.c and decode.c files in path "src/template/" of ZFP(https://github.com/LLNL/zfp).
+Replace the encode.c and decode.c files in the path "src/template/" of ZFP(https://github.com/LLNL/zfp).
