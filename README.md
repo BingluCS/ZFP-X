@@ -7,5 +7,8 @@ Today’s scientific simulations are confronting grave limited I/O bandwidth, ne
 ## About ZFP-X
 ZFP is one of the most successful compressors for scientific applications in high-performance computing systems and this work continues to be optimized. We propose a new embedded coding and apply it to ZFP, called ZFP-X. 
 
+## Citation
+*ZFP: Peter Lindstrom. Fixed-Rate Compressed Floating-Point Arrays. IEEE Transactions on Visualization and Computer Graphics, 20(12):2674-2683, December 2014.doi:10.1109/TVCG.2014.2346458.
+
 ## Install
 Replace the encode.c and decode.c files in the path "src/template/" of ZFP(https://github.com/LLNL/zfp).
