@@ -204,8 +204,6 @@ _t1(encode_few_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, const
   //algin index of the array
   if(k!=0)
   k--;
-  for(i=k;i>0;i--)
-	printf("%d\n",num[i]-num[i-1]);
   //write the leading 0 to stream
   stream_write_bits(&s,0,intprec-num[k]-kmin);
   if(num[k]!=0)
