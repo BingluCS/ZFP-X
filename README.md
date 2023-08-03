@@ -1,7 +1,7 @@
 # ZFP-X
+ZFP-X is an extended version of ZFP. ZFP-X has improved the embedded coding in the fixed-precision and fixed-accuracy mode of ZFP, which lead to the compression and decompression throughput achieved significant improvement.
 
 ## Background
-
 Today’s scientific simulations are confronting grave limited I/O bandwidth, network bandwidth, and storage capacity because of immense volumes of data generated in high-performance computing systems. Data compression has emerged as one of the most effective approaches to resolve the issue of the exponential increase of scientific data. Among them, embedded coding is widely applied, which contributes to the dominant running time for the corresponding compressors.
 
 ## About ZFP-X
@@ -9,6 +9,4 @@ ZFP is one of the most successful compressors for scientific applications in hig
 
 ## Citation
 * ZFP: Peter Lindstrom. Fixed-Rate Compressed Floating-Point Arrays. IEEE Transactions on Visualization and Computer Graphics, 20(12):2674-2683, December 2014.doi:10.1109/TVCG.2014.2346458.
-
-## Install
-Replace the encode.c and decode.c files in the path "src/template/" of ZFP(https://github.com/LLNL/zfp).
+* https://github.com/LLNL/zfp
