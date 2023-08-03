@@ -184,63 +184,13 @@ _t1(encode_few_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, const
   bitstream_offset offset = stream_wtell(&s);
   UInt intprec = (uint)(CHAR_BIT * sizeof(UInt));
   UInt kmin = intprec > maxprec ? intprec - maxprec : 0;
-  int  k=0,*num,*idx,i,r=0;
+  int  k=0;
   uint64 x=0;
-  //initialize 
-  num =(int *)malloc(size*sizeof(int));
-  idx =(int *)malloc(size*sizeof(int));
-  num[0]=0;
-  idx[0]=size;
-  //look for turning point and store them
-  for(i=0;i<size&&r<intprec-kmin;i++){
-  	if(data[size-i-1]>>kmin>>r){
-  	   for(;data[size-i-1]>>kmin>>++r&&r<intprec-kmin;)
-  		;
-  	   num[k]=r;
-  	   idx[k]=size-i-1;
-  	   k++;
-  	}
-  }
-  //algin index of the array
-  if(k!=0)
-  k--;
-  //write the leading 0 to stream
-  stream_write_bits(&s,0,intprec-num[k]-kmin);
-  if(num[k]!=0)
-  stream_write_bit(&s,1);
-  for(i=0;i<size-1&&num[k]>0;i++) {
-  	x=(uint64)(data[i]>>kmin);
-  	stream_write_bits(&s,x,num[k]);
-  	if(x>>num[k]-1) {
-  	    if(idx[k]==i)//bit_group reducetion
-  	    stream_write_bits(&s,0,num[k]-num[--k]);
-  	    if(num[k]>0)
-  	    stream_write_bit(&s,1);
-  	}
-  }
-  if(num[k]>0) {//Storing the last data,its highest bit absolutely is 1
-  	x=(uint64)(data[size-1]>>kmin);
- 	stream_write_bits(&s,x,num[k]-1);
-  }
-  free(num);
-  free(idx);
-  *stream = s;
-  return (uint)(stream_wtell(&s) - offset);
-}
-/* compress sequence of size > 64 unsigned integers with no rate constraint */
-static uint
-_t1(encode_many_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, const UInt* restrict_ data, uint size)
-{
-  /* make a copy of bit stream to avoid aliasing */
-  bitstream s = *stream;
-  bitstream_offset offset = stream_wtell(&s);
-  UInt intprec = (uint)(CHAR_BIT * sizeof(UInt));
-  UInt kmin = intprec > maxprec ? intprec - maxprec : 0;
-  int  k=0,*num,*idx,i,r=0;
-  uint64 x=0;
+  UInt r=0;
+  uint i,*num,*idx;
   //initialize
-  num =(int *)malloc(size*sizeof(int));
-  idx =(int *)malloc(size*sizeof(int));
+  num =(uint *)malloc(size*sizeof(uint));
+  idx =(uint *)malloc(size*sizeof(uint));
   num[0]=0;
   idx[0]=size;
   //preprocessing
@@ -262,7 +212,60 @@ _t1(encode_many_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, cons
   for(i=0;i<size-1&&num[k]>0;i++) {
   	x=(uint64)(data[i]>>kmin);
   	stream_write_bits(&s,x,num[k]);
-  	if(x>>num[k]-1) {
+  	if(x>>(num[k]-1)) {
+  	    if(idx[k]==i)
+  	    stream_write_bits(&s,0,num[k]-num[--k]);
+  	    if(num[k]>0)
+  	    stream_write_bit(&s,1);
+  	}
+  }
+  if(num[k]>0) {
+  	x=(uint64)(data[size-1]>>kmin);
+ 	stream_write_bits(&s,x,num[k]-1);
+  }
+  free(num);
+  free(idx);
+  *stream = s;
+  return (uint)(stream_wtell(&s) - offset);
+}
+/* compress sequence of size > 64 unsigned integers with no rate constraint */
+static uint
+_t1(encode_many_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, const UInt* restrict_ data, uint size)
+{
+  /* make a copy of bit stream to avoid aliasing */
+  bitstream s = *stream;
+  bitstream_offset offset = stream_wtell(&s);
+  UInt intprec = (uint)(CHAR_BIT * sizeof(UInt));
+  UInt kmin = intprec > maxprec ? intprec - maxprec : 0;
+  int  k=0;
+  uint64 x=0;
+  UInt r=0;
+  uint i,*num,*idx;
+  //initialize
+  num =(uint *)malloc(size*sizeof(uint));
+  idx =(uint *)malloc(size*sizeof(uint));
+  num[0]=0;
+  idx[0]=size;
+  //preprocessing
+  for(i=0;i<size&&r<intprec-kmin;i++){
+  	if(data[size-i-1]>>kmin>>r){
+  	   for(;data[size-i-1]>>kmin>>++r&&r<intprec-kmin;)
+  		;
+  	   num[k]=r;
+  	   idx[k]=size-i-1;
+  	   k++;
+  	}
+  }
+  //algin the array index
+  if(k!=0)
+  k--;
+  stream_write_bits(&s,0,intprec-num[k]-kmin);
+  if(num[k]!=0)
+  stream_write_bit(&s,1);
+  for(i=0;i<size-1&&num[k]>0;i++) {
+  	x=(uint64)(data[i]>>kmin);
+  	stream_write_bits(&s,x,num[k]);
+  	if(x>>(num[k]-1)) {
   	    if(idx[k]==i)
   	    stream_write_bits(&s,0,num[k]-num[--k]);
   	    if(num[k]>0)
@@ -280,59 +283,59 @@ _t1(encode_many_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, cons
 }
 
 /* old encoding version of ZFP at fixed-accuracy and fixed-precision modes*/
-static uint
-_t1(encode_few_ints_prec_old, UInt)(bitstream* restrict_ stream, uint maxprec, const UInt* restrict_ data, uint size)
-{
-  /* make a copy of bit stream to avoid aliasing */
-  bitstream s = *stream;
-  bitstream_offset offset = stream_wtell(&s);
-  uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
-  uint kmin = intprec > maxprec ? intprec - maxprec : 0;
-  uint i, k, n;
+// static uint
+// _t1(encode_few_ints_prec_old, UInt)(bitstream* restrict_ stream, uint maxprec, const UInt* restrict_ data, uint size)
+// {
+//   /* make a copy of bit stream to avoid aliasing */
+//   bitstream s = *stream;
+//   bitstream_offset offset = stream_wtell(&s);
+//   uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
+//   uint kmin = intprec > maxprec ? intprec - maxprec : 0;
+//   uint i, k, n;
 
-  /* encode one bit plane at a time from MSB to LSB */
-  for (k = intprec, n = 0; k-- > kmin;) {
-    /* step 1: extract bit plane #k to x */
-    uint64 x = 0;
-    for (i = 0; i < size; i++)
-      x += (uint64)((data[i] >> k) & 1u) << i;
-    //step 2: encode first n bits of bit plane 
-    x = stream_write_bits(&s, x, n);
-    /* step 3: unary run-length encode remainder of bit plane */
-    for (; n < size && stream_write_bit(&s, !!x); x >>= 1, n++)
-      for (; n < size - 1 && !stream_write_bit(&s, x & 1u); x >>= 1, n++)
-        ;
-  }
-  *stream = s;
-  return (uint)(stream_wtell(&s) - offset);
-}
-static uint
-_t1(encode_many_ints_prec_old, UInt)(bitstream* restrict_ stream, uint maxprec, const UInt* restrict_ data, uint size)
-{
-  /* make a copy of bit stream to avoid aliasing */
-  bitstream s = *stream;
-  bitstream_offset offset = stream_wtell(&s);
-  uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
-  uint kmin = intprec > maxprec ? intprec - maxprec : 0;
-  uint i, k, n, c;
+//   /* encode one bit plane at a time from MSB to LSB */
+//   for (k = intprec, n = 0; k-- > kmin;) {
+//     /* step 1: extract bit plane #k to x */
+//     uint64 x = 0;
+//     for (i = 0; i < size; i++)
+//       x += (uint64)((data[i] >> k) & 1u) << i;
+//     //step 2: encode first n bits of bit plane 
+//     x = stream_write_bits(&s, x, n);
+//     /* step 3: unary run-length encode remainder of bit plane */
+//     for (; n < size && stream_write_bit(&s, !!x); x >>= 1, n++)
+//       for (; n < size - 1 && !stream_write_bit(&s, x & 1u); x >>= 1, n++)
+//         ;
+//   }
+//   *stream = s;
+//   return (uint)(stream_wtell(&s) - offset);
+// }
+// static uint
+// _t1(encode_many_ints_prec_old, UInt)(bitstream* restrict_ stream, uint maxprec, const UInt* restrict_ data, uint size)
+// {
+//   /* make a copy of bit stream to avoid aliasing */
+//   bitstream s = *stream;
+//   bitstream_offset offset = stream_wtell(&s);
+//   uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
+//   uint kmin = intprec > maxprec ? intprec - maxprec : 0;
+//   uint i, k, n, c;
 
-  /* encode one bit plane at a time from MSB to LSB */
-  for (k = intprec, n = 0; k-- > kmin;) {
-    /* step 1: encode first n bits of bit plane #k */
-    for (i = 0; i < n; i++)
-      stream_write_bit(&s, (data[i] >> k) & 1u);
-    /* step 2: count remaining one-bits in bit plane */
-    c = 0;
-    for (i = n; i < size; i++)
-      c += (data[i] >> k) & 1u;
-    /* step 3: unary run-length encode remainder of bit plane */
-    for (; n < size && stream_write_bit(&s, !!c); n++)
-      for (c--; n < size - 1 && !stream_write_bit(&s, (data[n] >> k) & 1u); n++)
-        ;
-  }
-  *stream = s;
-  return (uint)(stream_wtell(&s) - offset);
-}
+//   /* encode one bit plane at a time from MSB to LSB */
+//   for (k = intprec, n = 0; k-- > kmin;) {
+//     /* step 1: encode first n bits of bit plane #k */
+//     for (i = 0; i < n; i++)
+//       stream_write_bit(&s, (data[i] >> k) & 1u);
+//     /* step 2: count remaining one-bits in bit plane */
+//     c = 0;
+//     for (i = n; i < size; i++)
+//       c += (data[i] >> k) & 1u;
+//     /* step 3: unary run-length encode remainder of bit plane */
+//     for (; n < size && stream_write_bit(&s, !!c); n++)
+//       for (c--; n < size - 1 && !stream_write_bit(&s, (data[n] >> k) & 1u); n++)
+//         ;
+//   }
+//   *stream = s;
+//   return (uint)(stream_wtell(&s) - offset);
+// }
 
 /* compress sequence of size unsigned integers */
 static uint
