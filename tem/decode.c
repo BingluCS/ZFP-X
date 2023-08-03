@@ -176,85 +176,7 @@ _t1(decode_many_ints, UInt)(bitstream* restrict_ stream, uint maxbits, uint maxp
 static uint
 _t1(decode_few_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, UInt* restrict_ data, uint size)
 {
-
-  bitstream s = *stream;
-  bitstream_offset offset = stream_rtell(&s);
-  uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
-  uint kmin = intprec > maxprec ? intprec - maxprec : 0;
-  int  k,n,i;
-  uint64 x,pre=0;
-  /* initialize data array to all zeros */
-  for (i = 0; i < size; i++)
-    data[i] = 0;
-  //decode the leading zero and calculate the number of bit the first to be read
-  for(n=0;n<intprec-kmin&&!stream_read_bit(&s);n++)
-	  ;
-  n=intprec-kmin-n;
-  for(i=0;i<size-1&&n>0;i++){
-  	x=0;
-	x=stream_read_bits(&s,n);
-	pre=x>>(n-1);
-        //it indicates the data may be a turning point if the highest decoded data is 1 
-	if(pre)
-	    for(;n>0&&!stream_read_bit(&s);n--)
-	    ;
-	data[i]=(UInt)(x)<<kmin;
-  }
-  //decode the last data
-  if(n>0){
-  x=stream_read_bits(&s,n-1);
-  data[i]=((UInt)(x)<<kmin)+((UInt)1u<<n-1<<kmin);
-  }
-#if ZFP_ROUNDING_MODE == ZFP_ROUND_LAST
-
-  _t1(inv_round, UInt)(data, size, 0, intprec - k);
-#endif
-
-  *stream = s;
-  return (uint)(stream_rtell(&s) - offset);
-}
-/* decompress sequence of size > 64 unsigned integers with no rate constraint */
-static uint
-_t1(decode_many_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, UInt* restrict_ data, uint size)
-{
-
-  bitstream s = *stream;
-  bitstream_offset offset = stream_rtell(&s);
-  uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
-  uint kmin = intprec > maxprec ? intprec - maxprec : 0;
-  int  k,n,i;
-  uint64 x,pre=0;
-  for (i = 0; i < size; i++)
-    data[i] = 0;
-  for(n=0;n<intprec-kmin&&!stream_read_bit(&s);n++)
-	  ;
-  n=intprec-kmin-n;
-  for(i=0;i<size-1&&n>0;i++){
-  	x=0;
-	x=stream_read_bits(&s,n);
-	pre=x>>(n-1);
-	if(pre)
-	    for(;n>0&&!stream_read_bit(&s);n--)
-	    ;
-	data[i]=(UInt)(x)<<kmin;
-  }
-  if(n>0){
-  x=stream_read_bits(&s,n-1);
-  data[i]=((UInt)(x)<<kmin)+((UInt)1u<<n-1<<kmin);
-  }
-#if ZFP_ROUNDING_MODE == ZFP_ROUND_LAST
-
-  _t1(inv_round, UInt)(data, size, 0, intprec - k);
-#endif
-
-  *stream = s;
-  return (uint)(stream_rtell(&s) - offset);
-}
-/* old decoding version of ZFP at fixed-accuracy and fixed-precision modes*/
-static uint
-_t1(decode_few_ints_prec_old, UInt)(bitstream* restrict_ stream, uint maxprec, UInt* restrict_ data, uint size)
-{
-
+  /* make a copy of bit stream to avoid aliasing */
   bitstream s = *stream;
   bitstream_offset offset = stream_rtell(&s);
   uint intprec = (uint)(CHAR_BIT * sizeof(UInt));
@@ -264,29 +186,32 @@ _t1(decode_few_ints_prec_old, UInt)(bitstream* restrict_ stream, uint maxprec, U
   /* initialize data array to all zeros */
   for (i = 0; i < size; i++)
     data[i] = 0;
-  
+
+  /* decode one bit plane at a time from MSB to LSB */
   for (k = intprec, n = 0; k-- > kmin;) {
-  	/* step 1: decode first n bits of bit plane #k */
+    /* step 1: decode first n bits of bit plane #k */
     uint64 x = stream_read_bits(&s, n);
-  	/* step 2: unary run-length decode remainder of bit plane */
+    /* step 2: unary run-length decode remainder of bit plane */
     for (; n < size && stream_read_bit(&s); x += (uint64)1 << n, n++)
       for (; n < size - 1 && !stream_read_bit(&s); n++)
         ;
-	 /* step 3: deposit bit plane from x */
+    /* step 3: deposit bit plane from x */
     for (i = 0; x; i++, x >>= 1)
-      data[i] += (UInt)(x & 1u) << k;     
+      data[i] += (UInt)(x & 1u) << k;
   }
-  
+
 #if ZFP_ROUNDING_MODE == ZFP_ROUND_LAST
-	/* bias values to achieve proper rounding */
+  /* bias values to achieve proper rounding */
   _t1(inv_round, UInt)(data, size, 0, intprec - k);
 #endif
 
   *stream = s;
   return (uint)(stream_rtell(&s) - offset);
 }
+
+/* decompress sequence of size > 64 unsigned integers with no rate constraint */
 static uint
-_t1(decode_many_ints_prec_z, UInt)(bitstream* restrict_ stream, uint maxprec, UInt* restrict_ data, uint size)
+_t1(decode_many_ints_prec, UInt)(bitstream* restrict_ stream, uint maxprec, UInt* restrict_ data, uint size)
 {
   /* make a copy of bit stream to avoid aliasing */
   bitstream s = *stream;
@@ -343,9 +268,9 @@ _t1(decode_ints, UInt)(bitstream* restrict_ stream, uint maxbits, uint maxprec, 
 
 /* decode block of integers */
 static uint
-_t2(decode_block, Int, DIMS)(bitstream* stream, int minbits, int maxbits, int maxprec, Int* iblock)
+_t2(decode_block, Int, DIMS)(bitstream* stream, uint minbits, uint maxbits, uint maxprec, Int* iblock)
 {
-  int bits;
+  uint bits;
   cache_align_(UInt ublock[BLOCK_SIZE]);
   /* decode integer coefficients */
   bits = _t1(decode_ints, UInt)(stream, maxbits, maxprec, ublock, BLOCK_SIZE);
