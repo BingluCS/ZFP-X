@@ -15,4 +15,5 @@ IEEE Transactions on Visualization and Computer Graphics, 20(12):2674-2683, Dece
 * Bing Lu, Yida Li1, Junqi Wang, Huizhang Luo, Kenli Li.
 [ZFP-X: Efficient Embedded Coding for Accelerating Lossy Floating Point Compression](https://ieeexplore.ieee.org/abstract/document/10177402), 2023 IEEE International Parallel and Distributed Processing Symposium (IPDPS), St. Petersburg, FL, USA, 2023, pp. 1041-1050, [doi: 10.1109/IPDPS54959.2023.00107](https://doi.org/10.1109/IPDPS54959.2023.00107).
 
-* https://github.com/LLNL/zfp
+## Install
+Reference to https://github.com/LLNL/zfp
